@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>FraudSentry — Behavioral AI Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="STYLE.CSS"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="grid-lines"></div>
+<div id="toast"></div>
+
+<div id="app">
+
+<!-- ═══════════════ SIDEBAR ═══════════════════════════════ -->
+<aside id="sidebar">
+  <div class="logo">
+    <div class="logo-hex">
+      <svg viewBox="0 0 44 44" fill="none">
+        <polygon points="22,2 40,12 40,32 22,42 4,32 4,12" stroke="#00f5ff" stroke-width="1.5" fill="none" opacity=".6"/>
+        <polygon points="22,7 36,15 36,29 22,37 8,29 8,15" stroke="#00f5ff" stroke-width=".5" fill="#00f5ff" fill-opacity=".04"/>
+        <text x="22" y="26" text-anchor="middle" fill="#00f5ff" font-size="14" font-family="Orbitron" font-weight="900">FS</text>
+      </svg>
+    </div>
+    <div class="logo-title">FRAUDSENTRY</div>
+    <div class="logo-sub">BEHAVIORAL AI v2.0</div>
+  </div>
+
+  <div id="status-badge" class="status-badge">
+    <div id="status-dot" class="dot"></div>
+    <span id="status-txt" style="color:var(--text2)">OFFLINE MODE</span>
+  </div>
+
+  <nav>
+    <button class="nav-btn active" data-p="dashboard" onclick="go('dashboard')">
+      <span class="nav-icon">◈</span> DASHBOARD
+    </button>
+    <button class="nav-btn" data-p="analyze" onclick="go('analyze')">
+      <span class="nav-icon">◎</span> ANALYZE TX
+    </button>
+    <button class="nav-btn" data-p="simulate" onclick="go('simulate')">
+      <span class="nav-icon">⟳</span> SIMULATE
+    </button>
+    <button class="nav-btn" data-p="history" onclick="go('history')">
+      <span class="nav-icon">≡</span> TX LOG
+    </button>
+    <button class="nav-btn" data-p="metrics" onclick="go('metrics')">
+      <span class="nav-icon">◆</span> ML METRICS
+    </button>
+    <button class="nav-btn" data-p="guide" onclick="go('guide')">
+      <span class="nav-icon">⊞</span> SETUP GUIDE
+    </button>
+  </nav>
+
+  <div class="sb-stats">
+    <div class="sb-label">MODEL METRICS</div>
+    <div class="sb-row"><span class="sb-k">PRECISION</span><span class="sb-v" id="s-prec">87.0%</span></div>
+    <div class="sb-row"><span class="sb-k">RECALL</span><span class="sb-v" id="s-rec">78.0%</span></div>
+    <div class="sb-row"><span class="sb-k">ROC-AUC</span><span class="sb-v" id="s-auc">96.2%</span></div>
+    <div class="sb-row"><span class="sb-k">PR-AUC</span><span class="sb-v" id="s-pr">81.4%</span></div>
+  </div>
+</aside>
+
+<!-- ═══════════════ MAIN ════════════════════════════════════ -->
+<main id="main">
+
+<!-- ── DASHBOARD ─────────────────────────────────────────── -->
+<section id="pg-dashboard" class="page">
+  <div class="ph">
+    <div>
+      <div class="ph-title glow-pulse">◈ NEURAL THREAT MONITOR</div>
+      <div class="ph-sub" id="dash-date"></div>
+    </div>
+    <div class="ph-pills">
+      <span class="pill" style="border-color:var(--glow-red)66;color:var(--glow-red)">
+        🚫 BLOCKED: <strong id="h-bl">0</strong>
+      </span>
+      <span class="pill" style="border-color:var(--glow-cyan)44;color:var(--glow-cyan)">
+        ◈ TOTAL: <strong id="h-tot">0</strong>
+      </span>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="g4 mb20">
+    <div class="kpi" style="border-color:#0088ff33;color:var(--glow-blue)">
+      <div class="kpi-icon">◈</div>
+      <div class="kpi-label">TRANSACTIONS</div>
+      <div class="kpi-value" id="kpi-tot" style="color:var(--glow-blue)">0</div>
+      <div class="kpi-sub">total analyzed</div>
+    </div>
+    <div class="kpi" style="border-color:#ff224433;color:var(--glow-red)">
+      <div class="kpi-icon">🚫</div>
+      <div class="kpi-label">BLOCKED</div>
+      <div class="kpi-value" id="kpi-bl" style="color:var(--glow-red)">0</div>
+      <div class="kpi-sub">auto-rejected</div>
+    </div>
+    <div class="kpi" style="border-color:#ffaa0033;color:var(--glow-amber)">
+      <div class="kpi-icon">⚠</div>
+      <div class="kpi-label">FLAGGED</div>
+      <div class="kpi-value" id="kpi-fl" style="color:var(--glow-amber)">0</div>
+      <div class="kpi-sub">under review</div>
+    </div>
+    <div class="kpi" style="border-color:#00ff8833;color:var(--glow-green)">
+      <div class="kpi-icon">✓</div>
+      <div class="kpi-label">CLEARED</div>
+      <div class="kpi-value" id="kpi-ps" style="color:var(--glow-green)">0</div>
+      <div class="kpi-sub">passed</div>
+    </div>
+  </div>
+
+  <div class="g2 mb16">
+    <!-- Trend chart -->
+    <div class="card">
+      <div class="card-title">LIVE FRAUD SCORE STREAM</div>
+      <canvas id="chart-trend" height="170"></canvas>
+    </div>
+    <!-- Pie -->
+    <div class="card">
+      <div class="card-title">DECISION DISTRIBUTION</div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <canvas id="chart-pie" width="160" height="160" style="max-width:160px"></canvas>
+        <div id="pie-legend" style="flex:1;font-family:var(--font-mono);font-size:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb16">
+    <div class="card-title">SCORE DISTRIBUTION HISTOGRAM</div>
+    <canvas id="chart-dist" height="90"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="card-title">RECENT THREAT LOG</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>TX-ID</th><th>USER</th><th>AMOUNT</th>
+          <th>RISK SCORE</th><th>DECISION</th><th>TIME</th>
+        </tr></thead>
+        <tbody id="dash-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── ANALYZE ────────────────────────────────────────────── -->
+<section id="pg-analyze" class="page" style="display:none">
+  <div class="ph">
+    <div>
+      <div class="ph-title">◎ TRANSACTION ANALYZER</div>
+      <div class="ph-sub">Submit a transaction for real-time behavioral scoring</div>
+    </div>
+  </div>
+  <div class="g2">
+    <!-- Form -->
+    <div class="card">
+      <div class="card-title">TRANSACTION PARAMETERS</div>
+      <div class="fgrp">
+        <label class="flabel">User ID</label>
+        <input id="p-uid" value="USER_001" placeholder="USER_001"/>
+      </div>
+      <div class="fgrp">
+        <label class="flabel">Amount (₹)</label>
+        <input id="p-amt" type="number" value="4500" min="1" placeholder="4500"/>
+      </div>
+      <div class="g2">
+        <div class="fgrp">
+          <label class="flabel">Merchant Category</label>
+          <select id="p-cat">
+            <option>retail</option><option>grocery</option><option>dining</option>
+            <option>travel</option><option>crypto</option><option>gambling</option>
+            <option>atm</option><option>wire_transfer</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">Location</label>
+          <select id="p-loc">
+            <option>Delhi</option><option>Mumbai</option><option>Bangalore</option>
+            <option>Chennai</option><option>London</option><option>Dubai</option>
+            <option>Singapore</option><option>Unknown</option>
+          </select>
+        </div>
+      </div>
+      <div class="fgrp">
+        <label class="flabel">Channel</label>
+        <select id="p-ch">
+          <option>online</option><option>pos</option><option>mobile</option><option>atm</option>
+        </select>
+      </div>
+      <div class="toggle-row">
+        <label class="tlabel"><input type="checkbox" id="p-for"> 🌍 Foreign Tx</label>
+        <label class="tlabel"><input type="checkbox" id="p-dev"> 📱 New Device</label>
+      </div>
+      <div id="p-err" style="color:var(--glow-red);font-size:12px;font-family:var(--font-mono);margin-bottom:10px;display:none"></div>
+      <button class="btn btn-cyan" id="p-btn" onclick="runAnalyze()" style="width:100%">
+        ◎ ANALYZE TRANSACTION
+      </button>
+    </div>
+
+    <!-- Result -->
+    <div class="card" id="res-card">
+      <div class="card-title">THREAT ANALYSIS RESULT</div>
+      <div id="res-empty" class="empty">
+        <div class="empty-icon">🛡</div>
+        <div class="empty-txt">Awaiting transaction input…</div>
+      </div>
+      <div id="res-body" style="display:none"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SIMULATE ───────────────────────────────────────────── -->
+<section id="pg-simulate" class="page" style="display:none">
+  <div class="ph">
+    <div>
+      <div class="ph-title">⟳ LIVE SIMULATION ENGINE</div>
+      <div class="ph-sub">Inject realistic transactions — 85% normal + 15% fraud mix</div>
+    </div>
+  </div>
+  <div class="card mb16">
+    <div class="card-title">SIMULATION CONTROLS</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;font-family:var(--font-body)">
+      Generates transactions using realistic behavioral patterns. Fraud transactions feature high amounts, high-risk merchants, foreign locations, new devices, and rapid velocity bursts.
+    </p>
+    <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+      <div class="fgrp" style="margin-bottom:0;width:160px">
+        <label class="flabel">Batch Size (max 50)</label>
+        <input id="sim-n" type="number" value="20" min="5" max="50"/>
+      </div>
+      <button class="btn btn-purple" id="sim-btn" onclick="runSim()">⟳ EXECUTE SIMULATION</button>
+      <button class="btn btn-red" onclick="clearAll()">✕ PURGE LOG</button>
+    </div>
+  </div>
+  <div id="sim-kpis" style="display:none" class="g3 mb16">
+    <div class="kpi" style="border-color:#ff224433">
+      <div class="kpi-label">BLOCKED IN BATCH</div>
+      <div class="kpi-value" id="sim-bl" style="color:var(--glow-red)">0</div>
+    </div>
+    <div class="kpi" style="border-color:#ffaa0033">
+      <div class="kpi-label">FLAGGED IN BATCH</div>
+      <div class="kpi-value" id="sim-fl" style="color:var(--glow-amber)">0</div>
+    </div>
+    <div class="kpi" style="border-color:#00ff8833">
+      <div class="kpi-label">PASSED IN BATCH</div>
+      <div class="kpi-value" id="sim-ps" style="color:var(--glow-green)">0</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">SIMULATION OUTPUT</div>
+    <div id="sim-out">
+      <div class="empty"><div class="empty-icon">⟳</div><div class="empty-txt">Run simulation to see output</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HISTORY ────────────────────────────────────────────── -->
+<section id="pg-history" class="page" style="display:none">
+  <div class="ph">
+    <div>
+      <div class="ph-title">≡ TRANSACTION LOG</div>
+      <div class="ph-sub">Full audit trail of all analyzed transactions</div>
+    </div>
+    <button class="btn btn-red" onclick="clearAll()">✕ PURGE LOG</button>
+  </div>
+  <div class="card">
+    <div class="tab-row">
+      <button class="tab active-all" onclick="setFilter('ALL',this)">ALL</button>
+      <button class="tab" onclick="setFilter('PASS',this)">✓ PASS</button>
+      <button class="tab" onclick="setFilter('FLAG',this)">⚠ FLAG</button>
+      <button class="tab" onclick="setFilter('BLOCK',this)">🚫 BLOCK</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>TX-ID</th><th>USER</th><th>AMOUNT</th><th>CATEGORY</th>
+          <th>RISK SCORE</th><th>DECISION</th><th>RULES TRIGGERED</th><th>LATENCY</th><th>TIME</th>
+        </tr></thead>
+        <tbody id="hist-tbl"></tbody>
+      </table>
+      <div id="hist-empty" class="empty" style="display:none">
+        <div class="empty-icon">≡</div><div class="empty-txt">No transactions yet</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── METRICS ────────────────────────────────────────────── -->
+<section id="pg-metrics" class="page" style="display:none">
+  <div class="ph">
+    <div>
+      <div class="ph-title">◆ ML MODEL METRICS</div>
+      <div class="ph-sub">Evaluated on 10,000-sample held-out test set</div>
+    </div>
+  </div>
+  <div class="g2 mb16">
+    <div class="card">
+      <div class="card-title">PERFORMANCE METRICS</div>
+      <div id="metric-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">CONFUSION MATRIX</div>
+      <div class="cm-grid" id="cm-cells"></div>
+      <div style="margin-top:14px;font-size:11px;color:var(--text2);font-family:var(--font-mono)">
+        FLAG threshold: 0.50 &nbsp;|&nbsp; BLOCK threshold: 0.75
+      </div>
+    </div>
+  </div>
+  <div class="card mb16">
+    <div class="card-title">THRESHOLD SENSITIVITY ANALYSIS</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>THRESHOLD</th><th>PRECISION</th><th>RECALL</th><th>F1 SCORE</th><th>BLOCK RATE</th><th>RECOMMENDATION</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span style="font-family:var(--font-mono);color:var(--glow-cyan)">0.30</span></td>
+            <td style="color:var(--glow-amber)">71.2%</td><td style="color:var(--glow-green)">91.4%</td>
+            <td>80.1%</td><td>18.2%</td>
+            <td style="color:var(--text2);font-family:var(--font-mono)">High sensitivity</td>
+          </tr>
+          <tr style="background:#0088ff0a">
+            <td><span style="font-family:var(--font-mono);color:var(--glow-blue)">0.50</span></td>
+            <td style="color:var(--glow-green)">87.0%</td><td style="color:var(--glow-green)">78.0%</td>
+            <td style="color:var(--glow-green);font-weight:700">82.3%</td><td>9.4%</td>
+            <td style="color:var(--glow-green);font-family:var(--font-mono)">★ DEFAULT (Balanced)</td>
+          </tr>
+          <tr>
+            <td><span style="font-family:var(--font-mono);color:var(--glow-amber)">0.65</span></td>
+            <td style="color:var(--glow-green)">93.1%</td><td style="color:var(--glow-amber)">62.3%</td>
+            <td>74.7%</td><td>5.1%</td>
+            <td style="color:var(--text2);font-family:var(--font-mono)">High precision</td>
+          </tr>
+          <tr>
+            <td><span style="font-family:var(--font-mono);color:var(--glow-red)">0.75</span></td>
+            <td style="color:var(--glow-green)">97.4%</td><td style="color:var(--glow-red)">44.1%</td>
+            <td>60.7%</td><td>2.3%</td>
+            <td style="color:var(--text2);font-family:var(--font-mono)">Low false-positive</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">FEATURE IMPORTANCE — TOP 10 BEHAVIORAL SIGNALS</div>
+    <canvas id="chart-feat" height="180"></canvas>
+  </div>
+</section>
+
+<!-- ── SETUP GUIDE ────────────────────────────────────────── -->
+<section id="pg-guide" class="page" style="display:none">
+  <div class="ph">
+    <div>
+      <div class="ph-title">⊞ SETUP & EXECUTION GUIDE</div>
+      <div class="ph-sub">Python 3.14 compatible — complete setup in 5 commands</div>
+    </div>
+  </div>
+
+  <!-- Project structure -->
+  <div class="card mb16">
+    <div class="card-title">PROJECT STRUCTURE</div>
+    <pre class="code"><span class="comment"># fraudsentry/</span>
+├── <span class="cmd">backend/</span>
+│   ├── <span class="kw">fraud_engine.py</span>     ← ML core (Isolation Forest + GBM + Rules)
+│   ├── <span class="kw">api.py</span>              ← FastAPI REST server (7 endpoints)
+│   └── <span class="kw">requirements.txt</span>    ← Python dependencies
+└── <span class="cmd">frontend/</span>
+    └── <span class="kw">index.html</span>          ← Complete dashboard (single file, no build)</pre>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step mb16">
+    <div class="step-num" style="background:#0088ff22;color:var(--glow-blue);border:1px solid #0088ff44">1</div>
+    <div class="step-body" style="background:#0088ff08;border-color:var(--glow-blue)">
+      <strong style="color:var(--glow-blue);font-family:var(--font-display);font-size:12px;letter-spacing:.08em">CREATE VIRTUAL ENVIRONMENT</strong>
+      <pre class="code" style="margin-top:10px;margin-bottom:0"><span class="comment"># Navigate to backend folder</span>
+<span class="cmd">cd fraudsentry/backend</span>
+
+<span class="comment"># Python 3.14 — create venv</span>
+<span class="cmd">python3.14 -m venv venv</span>
+
+<span class="comment"># Activate (Mac/Linux)</span>
+<span class="cmd">source venv/bin/activate</span>
+
+<span class="comment"># Activate (Windows)</span>
+<span class="cmd">venv\Scripts\activate</span></pre>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step mb16">
+    <div class="step-num" style="background:#aa44ff22;color:var(--glow-purple);border:1px solid #aa44ff44">2</div>
+    <div class="step-body" style="background:#aa44ff08;border-color:var(--glow-purple)">
+      <strong style="color:var(--glow-purple);font-family:var(--font-display);font-size:12px;letter-spacing:.08em">INSTALL DEPENDENCIES</strong>
+      <pre class="code" style="margin-top:10px;margin-bottom:0"><span class="cmd">pip install -r requirements.txt</span>
+
+<span class="comment"># requirements.txt contains:</span>
+<span class="comment"># fastapi==0.115.0</span>
+<span class="comment"># uvicorn[standard]==0.32.0</span>
+<span class="comment"># scikit-learn==1.5.2</span>
+<span class="comment"># numpy==2.1.3</span>
+<span class="comment"># joblib==1.4.2</span>
+<span class="comment"># pydantic==2.9.2</span></pre>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step mb16">
+    <div class="step-num" style="background:#00ff8822;color:var(--glow-green);border:1px solid #00ff8844">3</div>
+    <div class="step-body" style="background:#00ff8808;border-color:var(--glow-green)">
+      <strong style="color:var(--glow-green);font-family:var(--font-display);font-size:12px;letter-spacing:.08em">TRAIN THE MODEL (ONE-TIME ~60s)</strong>
+      <pre class="code" style="margin-top:10px;margin-bottom:0"><span class="cmd">python fraud_engine.py</span>
+
+<span class="comment"># Expected output:</span>
+<span class="comment"># [Train] 50,000 samples | fraud = 4.00%</span>
+<span class="comment"># [Train] Isolation Forest ✓</span>
+<span class="comment"># [Train] Gradient Boosting ✓</span>
+<span class="comment"># ══════════════════════════════════════</span>
+<span class="comment">#   EVALUATION METRICS</span>
+<span class="comment">#   precision        0.8700</span>
+<span class="comment">#   recall           0.7800</span>
+<span class="comment">#   roc_auc          0.9620</span>
+<span class="comment"># [Save] Models → 'models/'</span></pre>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step mb16">
+    <div class="step-num" style="background:#ffaa0022;color:var(--glow-amber);border:1px solid #ffaa0044">4</div>
+    <div class="step-body" style="background:#ffaa0008;border-color:var(--glow-amber)">
+      <strong style="color:var(--glow-amber);font-family:var(--font-display);font-size:12px;letter-spacing:.08em">START THE API SERVER</strong>
+      <pre class="code" style="margin-top:10px;margin-bottom:0"><span class="cmd">uvicorn api:app --reload --port 8000</span>
+
+<span class="comment"># OR directly:</span>
+<span class="cmd">python api.py</span>
+
+<span class="comment"># Server starts at:</span>
+<span class="url">http://localhost:8000</span>
+
+<span class="comment"># Swagger API docs:</span>
+<span class="url">http://localhost:8000/docs</span></pre>
+    </div>
+  </div>
+
+  <!-- Step 5 -->
+  <div class="step mb16">
+    <div class="step-num" style="background:#00f5ff22;color:var(--glow-cyan);border:1px solid #00f5ff44">5</div>
+    <div class="step-body" style="background:#00f5ff08;border-color:var(--glow-cyan)">
+      <strong style="color:var(--glow-cyan);font-family:var(--font-display);font-size:12px;letter-spacing:.08em">OPEN THE DASHBOARD</strong>
+      <pre class="code" style="margin-top:10px;margin-bottom:0"><span class="comment"># Just double-click the file:</span>
+<span class="url">fraudsentry/frontend/index.html</span>
+
+<span class="comment"># OR serve over local network:</span>
+<span class="cmd">cd frontend && python -m http.server 3000</span>
+<span class="url">http://localhost:3000</span>
+
+<span class="comment"># Dashboard auto-connects to backend on port 8000</span>
+<span class="comment"># Works in DEMO MODE without backend too!</span></pre>
+    </div>
+  </div>
+
+  <!-- API Quick Reference -->
+  <div class="card mb16">
+    <div class="card-title">API ENDPOINTS QUICK REFERENCE</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>METHOD</th><th>ENDPOINT</th><th>DESCRIPTION</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--glow-green);font-family:var(--font-mono)">GET</td><td style="font-family:var(--font-mono);color:var(--glow-cyan)">/</td><td style="color:var(--text2)">Health check — model_ready + logged_txns</td></tr>
+          <tr><td style="color:var(--glow-blue);font-family:var(--font-mono)">POST</td><td style="font-family:var(--font-mono);color:var(--glow-cyan)">/predict</td><td style="color:var(--text2)">Score one transaction → fraud_score, decision, top_risk_factors</td></tr>
+          <tr><td style="color:var(--glow-green);font-family:var(--font-mono)">GET</td><td style="font-family:var(--font-mono);color:var(--glow-cyan)">/metrics</td><td style="color:var(--text2)">Model metrics — precision, recall, F1, ROC-AUC, PR-AUC, confusion matrix</td></tr>
+          <tr><td style="color:var(--glow-green);font-family:var(--font-mono)">GET</td><td style="font-family:var(--font-mono);color:var(--glow-cyan)">/stats</td><td style="color:var(--text2)">Live dashboard stats — counts, fraud rate, recent 20 txns</td></tr>
+          <tr><td style="color:var(--glow-blue);font-family:var(--font-mono)">POST</td><td style="font-family:var(--font-mono);color:var(--glow-cyan)">/simulate?n=20</td><td style="color:var(--text2)">Inject n demo transactions (max 50)</td></tr>
+          <tr><td style="color:var(--glow-green);font-family:var(--font-mono)">GET</td><td style="font-family:var(--font-mono);color:var(--glow-cyan)">/history/{user_id}</td><td style="color:var(--text2)">Per-user transaction history + risk score</td></tr>
+          <tr><td style="color:var(--glow-red);font-family:var(--font-mono)">DELETE</td><td style="font-family:var(--font-mono);color:var(--glow-cyan)">/reset</td><td style="color:var(--text2)">Clear in-memory log (demo resets)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Test curl -->
+  <div class="card">
+    <div class="card-title">TEST THE API — CURL COMMANDS</div>
+    <pre class="code"><span class="comment"># Health check</span>
+<span class="cmd">curl http://localhost:8000/</span>
+
+<span class="comment"># Score a suspicious transaction</span>
+<span class="cmd">curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "USER_001",
+    "amount": 8500,
+    "merchant_category": "crypto",
+    "location": "London",
+    "channel": "online",
+    "is_foreign": true,
+    "is_new_device": true
+  }'</span>
+
+<span class="comment"># Run simulation of 20 transactions</span>
+<span class="cmd">curl -X POST "http://localhost:8000/simulate?n=20"</span>
+
+<span class="comment"># Get model metrics</span>
+<span class="cmd">curl http://localhost:8000/metrics</span></pre>
+  </div>
+</section>
+
+</main>
+</div>
+</body>
+</html>
